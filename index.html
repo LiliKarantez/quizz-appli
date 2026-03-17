@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculateur Applis — Les Cœurs Solitaires</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Bai+Jamjuree:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --violet: #9B59B6;
+    --fuchsia: #E91E8C;
+    --turquoise: #00BCD4;
+    --dark: #1a1a2e;
+    --darker: #0f0f1a;
+    --white: #FAFAFA;
+    --grey: #b0b0c0;
+  }
+  body {
+    background: var(--darker);
+    color: var(--white);
+    font-family: 'Bai Jamjuree', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    position: relative;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; top: -30%; left: -20%;
+    width: 70vw; height: 70vw;
+    background: radial-gradient(circle, rgba(155,89,182,0.12) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed; bottom: -20%; right: -10%;
+    width: 50vw; height: 50vw;
+    background: radial-gradient(circle, rgba(233,30,140,0.08) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* HEARTS CANVAS */
+  #heartsCanvas {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; z-index: 0;
+  }
+
+  .wrapper { max-width: 640px; width: 100%; position: relative; z-index: 1; }
+
+  .brand {
+    text-align: center; margin-bottom: 2.5rem;
+    opacity: 0; animation: fadeDown 0.6s ease forwards 0.1s;
+  }
+  .brand-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.85rem; letter-spacing: 0.25em;
+    text-transform: uppercase; color: var(--violet);
+  }
+
+  .card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px; padding: 2.5rem 2rem;
+    backdrop-filter: blur(12px);
+    opacity: 0; animation: fadeUp 0.7s ease forwards 0.3s;
+  }
+  .card-header { text-align: center; margin-bottom: 2rem; }
+  .card-header .eyebrow {
+    font-size: 0.75rem; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--fuchsia); margin-bottom: 0.8rem;
+  }
+  .card-header h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(1.6rem, 5vw, 2.2rem);
+    font-weight: 700; line-height: 1.2; color: var(--white); margin-bottom: 0.8rem;
+  }
+  .card-header p { font-size: 0.9rem; color: var(--grey); line-height: 1.6; }
+
+  .progress-bar {
+    width: 100%; height: 3px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px; margin-bottom: 2rem; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--violet), var(--fuchsia));
+    border-radius: 2px; transition: width 0.5s ease; width: 0%;
+  }
+
+  .question-block { display: none; animation: fadeUp 0.4s ease forwards; }
+  .question-block.active { display: block; }
+  .question-label {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.25rem; font-style: italic;
+    color: var(--white); margin-bottom: 1.5rem; line-height: 1.4;
+  }
+  .question-num {
+    font-family: 'Bai Jamjuree', sans-serif;
+    font-size: 0.7rem; font-style: normal;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--violet); display: block; margin-bottom: 0.5rem;
+  }
+  .options { display: flex; flex-direction: column; gap: 0.7rem; }
+  .option-btn {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 1rem 1.2rem;
+    color: var(--white); font-family: 'Bai Jamjuree', sans-serif;
+    font-size: 0.92rem; cursor: pointer; text-align: left;
+    transition: all 0.2s ease; line-height: 1.4;
+  }
+  .option-btn:hover { background: rgba(155,89,182,0.15); border-color: var(--violet); transform: translateX(4px); }
+  .option-btn.selected { background: rgba(233,30,140,0.12); border-color: var(--fuchsia); }
+
+  .nav-row { display: flex; justify-content: flex-end; margin-top: 1.5rem; }
+  .btn-next {
+    background: linear-gradient(135deg, var(--violet), var(--fuchsia));
+    border: none; border-radius: 50px; padding: 0.8rem 2rem;
+    color: white; font-family: 'Bai Jamjuree', sans-serif;
+    font-size: 0.88rem; font-weight: 600; letter-spacing: 0.05em;
+    cursor: pointer; transition: all 0.2s ease; opacity: 0.4; pointer-events: none;
+  }
+  .btn-next.active { opacity: 1; pointer-events: all; }
+  .btn-next.active:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(233,30,140,0.35); }
+
+  /* RESULT */
+  .result-block { display: none; text-align: center; animation: fadeUp 0.6s ease forwards; }
+  .result-block.active { display: block; }
+  .result-icon { font-size: 3rem; margin-bottom: 1rem; }
+  .result-verdict {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(1.1rem, 4vw, 1.35rem); font-style: italic;
+    color: var(--grey); margin-bottom: 1.2rem; line-height: 1.5;
+  }
+  .result-number {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(3rem, 12vw, 5rem); font-weight: 700;
+    background: linear-gradient(135deg, var(--violet), var(--fuchsia));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; line-height: 1; margin-bottom: 0.3rem;
+  }
+  .result-unit {
+    font-size: 0.85rem; color: var(--grey);
+    letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1.5rem;
+  }
+  .result-breakdown {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px; padding: 1.2rem; margin-bottom: 1.5rem; text-align: left;
+  }
+  .breakdown-line {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.4rem 0; font-size: 0.85rem; color: var(--grey);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .breakdown-line:last-child { border-bottom: none; }
+  .breakdown-line span:last-child { color: var(--white); font-weight: 500; }
+
+  .result-punchline {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.15rem; font-style: italic; color: var(--white);
+    line-height: 1.6; margin-bottom: 2rem; padding: 1.2rem;
+    border-left: 3px solid var(--fuchsia); text-align: left;
+    background: rgba(233,30,140,0.06); border-radius: 0 10px 10px 0;
+  }
+
+  /* EVENTS SECTION */
+  .events-section { margin-bottom: 1.5rem; }
+  .events-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.1rem; font-style: italic;
+    color: var(--white); margin-bottom: 1rem; text-align: center;
+  }
+  .events-grid { display: flex; flex-direction: column; gap: 0.6rem; }
+  .event-btn {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 0.9rem 1.1rem;
+    color: var(--white); text-decoration: none;
+    font-family: 'Bai Jamjuree', sans-serif;
+    font-size: 0.88rem; transition: all 0.2s ease;
+  }
+  .event-btn:hover { background: rgba(155,89,182,0.15); border-color: var(--violet); transform: translateX(3px); }
+  .event-btn.featured {
+    background: linear-gradient(135deg, rgba(155,89,182,0.2), rgba(233,30,140,0.2));
+    border-color: rgba(233,30,140,0.4);
+  }
+  .event-btn.featured:hover { box-shadow: 0 6px 20px rgba(233,30,140,0.3); }
+  .event-info { display: flex; flex-direction: column; gap: 0.2rem; }
+  .event-name { font-weight: 600; font-size: 0.9rem; }
+  .event-date { font-size: 0.78rem; color: var(--grey); }
+  .event-arrow { color: var(--fuchsia); font-size: 1rem; }
+
+  /* SALON CTA */
+  .salon-cta {
+    display: block; width: 100%;
+    background: linear-gradient(135deg, var(--violet), var(--fuchsia));
+    border: none; border-radius: 50px; padding: 1rem 2rem;
+    color: white; font-family: 'Bai Jamjuree', sans-serif;
+    font-size: 0.95rem; font-weight: 600; letter-spacing: 0.04em;
+    cursor: pointer; text-decoration: none;
+    transition: all 0.25s ease; text-align: center; margin-bottom: 1.5rem;
+  }
+  .salon-cta:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(233,30,140,0.4); }
+
+  /* NEWSLETTER */
+  .newsletter-section {
+    background: rgba(0,188,212,0.06);
+    border: 1px solid rgba(0,188,212,0.2);
+    border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem;
+  }
+  .newsletter-section h3 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.1rem; color: var(--white);
+    margin-bottom: 0.4rem;
+  }
+  .newsletter-section p {
+    font-size: 0.82rem; color: var(--grey); margin-bottom: 1rem; line-height: 1.5;
+  }
+  .nl-form { display: flex; flex-direction: column; gap: 0.6rem; }
+  .nl-row { display: flex; gap: 0.6rem; }
+  .nl-input {
+    flex: 1; background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px; padding: 0.7rem 1rem;
+    color: var(--white); font-family: 'Bai Jamjuree', sans-serif;
+    font-size: 0.88rem; outline: none; transition: border-color 0.2s;
+  }
+  .nl-input::placeholder { color: rgba(255,255,255,0.3); }
+  .nl-input:focus { border-color: var(--turquoise); }
+  .btn-nl {
+    width: 100%; background: linear-gradient(135deg, #00897B, var(--turquoise));
+    border: none; border-radius: 50px; padding: 0.8rem 1.5rem;
+    color: white; font-family: 'Bai Jamjuree', sans-serif;
+    font-size: 0.88rem; font-weight: 600; cursor: pointer;
+    transition: all 0.2s ease; margin-top: 0.2rem;
+  }
+  .btn-nl:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,188,212,0.35); }
+  .nl-success {
+    display: none; text-align: center;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem; font-style: italic; color: var(--turquoise); padding: 0.5rem;
+  }
+
+  /* CONTACT */
+  .contact-btn {
+    display: block; width: 100%; text-align: center;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 50px; padding: 0.75rem 1.5rem;
+    color: var(--grey); font-family: 'Bai Jamjuree', sans-serif;
+    font-size: 0.85rem; text-decoration: none;
+    transition: all 0.2s ease; margin-bottom: 0.8rem;
+  }
+  .contact-btn:hover { border-color: var(--violet); color: var(--white); }
+
+  .btn-restart {
+    background: none; border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 50px; padding: 0.65rem 1.5rem;
+    color: var(--grey); font-family: 'Bai Jamjuree', sans-serif;
+    font-size: 0.82rem; cursor: pointer; transition: all 0.2s ease;
+    width: 100%; margin-top: 0.4rem;
+  }
+  .btn-restart:hover { border-color: rgba(255,255,255,0.3); color: var(--white); }
+
+  .footer-brand {
+    text-align: center; margin-top: 2rem;
+    font-size: 0.68rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: rgba(255,255,255,0.2);
+    line-height: 1.8;
+    opacity: 0; animation: fadeUp 0.5s ease forwards 0.8s;
+  }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+  @media (max-width: 480px) {
+    .card { padding: 1.8rem 1.2rem; }
+    .nl-row { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="heartsCanvas"></canvas>
+
+<div class="wrapper">
+  <div class="brand">
+    <div class="brand-name">Les Cœurs Solitaires</div>
+  </div>
+
+  <div class="card" id="mainCard">
+
+    <!-- INTRO -->
+    <div id="introBlock">
+      <div class="card-header">
+        <div class="eyebrow">Le test qui fait mal</div>
+        <h1>Combien de temps as-tu vraiment perdu sur les applis ?</h1>
+        <p>6 questions. Un chiffre honnête. Et peut-être une décision à prendre.</p>
+      </div>
+      <div style="text-align:center; margin-top:1.5rem;">
+        <button class="btn-next active" id="startBtn">Commencer le calcul →</button>
+      </div>
+    </div>
+
+    <!-- QUESTIONS -->
+    <div id="quizBlock" style="display:none;">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+      <div class="question-block active" id="q1">
+        <div class="question-label">
+          <span class="question-num">Question 1 / 6</span>
+          Depuis combien d’années tu utilises les applis de rencontre ?
+        </div>
+        <div class="options">
+          <button class="option-btn" data-q="1" data-val="1">Moins d’un an</button>
+          <button class="option-btn" data-q="1" data-val="2">1 à 2 ans</button>
+          <button class="option-btn" data-q="1" data-val="4">3 à 4 ans</button>
+          <button class="option-btn" data-q="1" data-val="6">5 ans ou plus</button>
+        </div>
+        <div class="nav-row"><button class="btn-next" id="next1">Suivant →</button></div>
+      </div>
+
+      <div class="question-block" id="q2">
+        <div class="question-label">
+          <span class="question-num">Question 2 / 6</span>
+          En moyenne, combien de minutes par jour tu passes à swiper ?
+        </div>
+        <div class="options">
+          <button class="option-btn" data-q="2" data-val="10">5 à 10 minutes</button>
+          <button class="option-btn" data-q="2" data-val="25">20 à 30 minutes</button>
+          <button class="option-btn" data-q="2" data-val="50">45 minutes à 1 heure</button>
+          <button class="option-btn" data-q="2" data-val="90">Plus d’une heure (soyons honnêtes)</button>
+        </div>
+        <div class="nav-row"><button class="btn-next" id="next2">Suivant →</button></div>
+      </div>
+
+      <div class="question-block" id="q3">
+        <div class="question-label">
+          <span class="question-num">Question 3 / 6</span>
+          Combien de vraies rencontres en face à face as-tu eu grâce aux applis ?
+        </div>
+        <div class="options">
+          <button class="option-btn" data-q="3" data-val="0">Aucune, encore</button>
+          <button class="option-btn" data-q="3" data-val="2">1 à 3</button>
+          <button class="option-btn" data-q="3" data-val="7">4 à 10</button>
+          <button class="option-btn" data-q="3" data-val="15">Plus de 10</button>
+        </div>
+        <div class="nav-row"><button class="btn-next" id="next3">Suivant →</button></div>
+      </div>
+
+      <div class="question-block" id="q4">
+        <div class="question-label">
+          <span class="question-num">Question 4 / 6</span>
+          Combien de conversations ont simplement… disparu dans le silence ?
+        </div>
+        <div class="options">
+          <button class="option-btn" data-q="4" data-val="5">Quelques-unes</button>
+          <button class="option-btn" data-q="4" data-val="20">Une vingtaine</button>
+          <button class="option-btn" data-q="4" data-val="50">Trop pour compter</button>
+          <button class="option-btn" data-q="4" data-val="100">Le cimetière des « ça commençait bien »</button>
+        </div>
+        <div class="nav-row"><button class="btn-next" id="next4">Suivant →</button></div>
+      </div>
+
+      <div class="question-block" id="q5">
+        <div class="question-label">
+          <span class="question-num">Question 5 / 6</span>
+          T’es-tu déjà senti jugé uniquement sur ta photo de profil ?
+        </div>
+        <div class="options">
+          <button class="option-btn" data-q="5" data-val="0">Non, jamais</button>
+          <button class="option-btn" data-q="5" data-val="1">Parfois, ça me traverse</button>
+          <button class="option-btn" data-q="5" data-val="2">Souvent, et c’est lassant</button>
+          <button class="option-btn" data-q="5" data-val="3">Tout le temps — j’en suis même convaincu</button>
+        </div>
+        <div class="nav-row"><button class="btn-next" id="next5">Suivant →</button></div>
+      </div>
+
+      <div class="question-block" id="q6">
+        <div class="question-label">
+          <span class="question-num">Question 6 / 6</span>
+          Est-ce que tu crois encore que les applis vont te trouver quelqu’un de vraiment bien ?
+        </div>
+        <div class="options">
+          <button class="option-btn" data-q="6" data-val="0">Oui, j’y crois encore</button>
+          <button class="option-btn" data-q="6" data-val="1">Je commence à douter sérieusement</button>
+          <button class="option-btn" data-q="6" data-val="2">Non, mais je ne sais pas quoi faire d’autre</button>
+          <button class="option-btn" data-q="6" data-val="3">Non — et c’est pour ça que je fais ce test</button>
+        </div>
+        <div class="nav-row"><button class="btn-next" id="next6">Calculer le résultat →</button></div>
+      </div>
+    </div>
+
+    <!-- RESULT -->
+    <div class="result-block" id="resultBlock">
+      <div class="result-icon">⏳</div>
+      <div class="result-verdict" id="resultVerdict"></div>
+      <div class="result-number" id="resultNumber"></div>
+      <div class="result-unit" id="resultUnit"></div>
+      <div class="result-breakdown" id="resultBreakdown"></div>
+      <div class="result-punchline" id="resultPunchline"></div>
+
+      <!-- EVENTS -->
+      <div class="events-section">
+        <div class="events-title">Les prochaines soirées Les Cœurs Solitaires</div>
+        <div class="events-grid">
+          <a href="https://ypl.me/Q1B" target="_blank" class="event-btn">
+            <div class="event-info">
+              <span class="event-name">Soirée Rencontre — Brest</span>
+              <span class="event-date">Vendredi 27 mars 2026</span>
+            </div>
+            <span class="event-arrow">→</span>
+          </a>
+          <a href="https://ypl.me/PWm" target="_blank" class="event-btn">
+            <div class="event-info">
+              <span class="event-name">Dîner entre Inconnus — Vannes</span>
+              <span class="event-date">Jeudi 26 mars 2026</span>
+            </div>
+            <span class="event-arrow">→</span>
+          </a>
+          <a href="https://ypl.me/PKY" target="_blank" class="event-btn">
+            <div class="event-info">
+              <span class="event-name">Soirée Rencontre — Lorient</span>
+              <span class="event-date">Jeudi 2 avril 2026</span>
+            </div>
+            <span class="event-arrow">→</span>
+          </a>
+          <a href="https://ypl.me/PUR" target="_blank" class="event-btn featured">
+            <div class="event-info">
+              <span class="event-name">✨ Le Salon de la Rencontre Célibataire — Vannes</span>
+              <span class="event-date">Samedi 6 juin 2026 — Maison Flow</span>
+            </div>
+            <span class="event-arrow">→</span>
+          </a>
+        </div>
+      </div>
+
+      <a href="https://ypl.me/PUR" target="_blank" class="salon-cta">
+        Je réserve ma place au Salon de la Rencontre Célibataire — Vannes, le 6 juin 2026
+      </a>
+
+      <!-- NEWSLETTER -->
+      <div class="newsletter-section">
+        <h3>Reste informé(e) des prochains événements</h3>
+        <p>Reçois en avant-première les dates, les nouveautés et les surprises des Cœurs Solitaires.</p>
+        <div class="nl-form" id="nlForm">
+          <div class="nl-row">
+            <input class="nl-input" type="text" id="nlPrenom" placeholder="Prénom" />
+            <input class="nl-input" type="text" id="nlNom" placeholder="Nom" />
+          </div>
+          <div class="nl-row">
+            <input class="nl-input" type="number" id="nlAge" placeholder="Âge" style="max-width:100px;" />
+            <input class="nl-input" type="text" id="nlVille" placeholder="Ville" />
+          </div>
+          <input class="nl-input" type="email" id="nlEmail" placeholder="Adresse e-mail" />
+          <button class="btn-nl" id="nlSubmit">S’inscrire à la newsletter →</button>
+        </div>
+        <div class="nl-success" id="nlSuccess">Merci ! Tu seras parmi les premiers informés. ♥</div>
+      </div>
+
+      <!-- CONTACT -->
+      <a href="mailto:lilikarantez@gmail.com" class="contact-btn">
+        ✉️ Contacter Lili Karantez — lilikarantez@gmail.com
+      </a>
+
+      <button class="btn-restart" id="restartBtn">↩ Recommencer le calcul</button>
+    </div>
+
+  </div>
+
+  <div class="footer-brand">
+    Création de Lili Karantez · Les Cœurs Solitaires<br>
+    Toute reproduction est interdite © 2026<br>
+    « La rencontre mérite mieux qu’un algorithme »
+  </div>
+</div>
+
+<script>
+  // HEARTS ANIMATION
+  var canvas = document.getElementById('heartsCanvas');
+  var ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  window.addEventListener('resize', function() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+
+  var hearts = [];
+  for (var i = 0; i < 18; i++) {
+    hearts.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height + canvas.height,
+      size: Math.random() * 14 + 6,
+      speedY: Math.random() * 0.6 + 0.2,
+      speedX: (Math.random() - 0.5) * 0.4,
+      opacity: Math.random() * 0.25 + 0.05,
+      wobble: Math.random() * Math.PI * 2,
+      wobbleSpeed: Math.random() * 0.02 + 0.008
+    });
+  }
+
+  function drawHeart(cx, cy, size, opacity) {
+    ctx.save();
+    ctx.globalAlpha = opacity;
+    ctx.fillStyle = '#E91E8C';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + size * 0.25);
+    ctx.bezierCurveTo(cx, cy, cx - size * 0.5, cy, cx - size * 0.5, cy + size * 0.35);
+    ctx.bezierCurveTo(cx - size * 0.5, cy + size * 0.7, cx, cy + size * 0.9, cx, cy + size);
+    ctx.bezierCurveTo(cx, cy + size * 0.9, cx + size * 0.5, cy + size * 0.7, cx + size * 0.5, cy + size * 0.35);
+    ctx.bezierCurveTo(cx + size * 0.5, cy, cx, cy, cx, cy + size * 0.25);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function animateHearts() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    hearts.forEach(function(h) {
+      h.y -= h.speedY;
+      h.wobble += h.wobbleSpeed;
+      h.x += Math.sin(h.wobble) * 0.5 + h.speedX;
+      if (h.y < -40) {
+        h.y = canvas.height + 20;
+        h.x = Math.random() * canvas.width;
+      }
+      drawHeart(h.x, h.y, h.size, h.opacity);
+    });
+    requestAnimationFrame(animateHearts);
+  }
+  animateHearts();
+
+  // QUIZ LOGIC
+  var answers = {};
+
+  function updateProgress(step) {
+    document.getElementById('progressFill').style.width = (step / 6 * 100) + '%';
+  }
+
+  document.getElementById('startBtn').addEventListener('click', function() {
+    document.getElementById('introBlock').style.display = 'none';
+    document.getElementById('quizBlock').style.display = 'block';
+    updateProgress(0);
+  });
+
+  document.querySelectorAll('.option-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var q = this.getAttribute('data-q');
+      answers[q] = parseInt(this.getAttribute('data-val'));
+      document.querySelectorAll('[data-q="' + q + '"]').forEach(function(s) { s.classList.remove('selected'); });
+      this.classList.add('selected');
+      var nb = document.getElementById('next' + q);
+      if (nb) nb.classList.add('active');
+    });
+  });
+
+  for (var i = 1; i <= 5; i++) {
+    (function(idx) {
+      var btn = document.getElementById('next' + idx);
+      if (btn) btn.addEventListener('click', function() {
+        if (answers[String(idx)] !== undefined) {
+          document.getElementById('q' + idx).classList.remove('active');
+          document.getElementById('q' + (idx + 1)).classList.add('active');
+          updateProgress(idx);
+        }
+      });
+    })(i);
+  }
+
+  document.getElementById('next6').addEventListener('click', function() {
+    if (answers['6'] !== undefined) showResult();
+  });
+
+  function showResult() {
+    document.getElementById('quizBlock').style.display = 'none';
+    document.getElementById('resultBlock').classList.add('active');
+
+    var years = answers['1'] || 2;
+    var minPerDay = answers['2'] || 25;
+    var ghosted = answers['4'] || 20;
+    var fatigue = (answers['5'] || 0) + (answers['6'] || 0);
+    var totalHours = Math.round(years * 365 * minPerDay / 60);
+    var totalDays = Math.round(totalHours / 24);
+    var level = fatigue >= 4 ? 3 : (totalHours > 500 ? 2 : (totalHours > 150 ? 1 : 0));
+
+    var verdicts = [
+      "Tu t’en sors plutôt bien — pour l’instant.",
+      "C’est une belle tranche de vie offerte aux algorithmes.",
+      "Ce temps-là, tu aurais pu écrire un roman. Ou en rencontrer l’héroïne.",
+      "C’est presque une carrière à temps partiel."
+    ];
+    var punchlines = [
+      "Un an passe vite. Mais une soirée qui change tout, ça peut arriver en quelques heures.",
+      "Une seule vraie rencontre peut tout effacer. Elle n’est pas dans ton téléphone.",
+      "Tu mérites mieux qu’une interface conçue pour que tu restes accro. Pas pour que tu rencontres.",
+      "L’algorithme ne te connaît pas. Lili, si. Et elle organise quelque chose pour toi le 6 juin à Vannes."
+    ];
+
+    document.getElementById('resultVerdict').textContent = verdicts[level];
+    if (totalDays >= 30) {
+      document.getElementById('resultNumber').textContent = totalDays;
+      document.getElementById('resultUnit').textContent = 'jours de ta vie passés sur les applis';
+    } else {
+      document.getElementById('resultNumber').textContent = totalHours;
+      document.getElementById('resultUnit').textContent = 'heures passées à swiper';
+    }
+
+    document.getElementById('resultBreakdown').innerHTML =
+      '<div class="breakdown-line"><span>Durée sur les applis</span><span>' + years + ' an' + (years > 1 ? 's' : '') + '</span></div>' +
+      '<div class="breakdown-line"><span>Temps quotidien</span><span>~' + minPerDay + ' min/jour</span></div>' +
+      '<div class="breakdown-line"><span>Conversations évanouies</span><span>~' + ghosted + '</span></div>' +
+      '<div class="breakdown-line"><span>Total calculé</span><span>' + totalHours + ' heures</span></div>';
+
+    document.getElementById('resultPunchline').textContent = punchlines[level];
+  }
+
+  // NEWSLETTER
+  document.getElementById('nlSubmit').addEventListener('click', function() {
+    var prenom = document.getElementById('nlPrenom').value.trim();
+    var nom = document.getElementById('nlNom').value.trim();
+    var age = document.getElementById('nlAge').value.trim();
+    var ville = document.getElementById('nlVille').value.trim();
+    var email = document.getElementById('nlEmail').value.trim();
+    if (!prenom || !email) { alert('Merci de renseigner au minimum ton prénom et ton e-mail.'); return; }
+
+    fetch('https://api.web3forms.com/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        access_key: 'd42b8d9d-a52c-4888-a489-5dd59b1b0f5b',
+        subject: 'Inscription newsletter — Les Cœurs Solitaires',
+        prenom: prenom, nom: nom, age: age, ville: ville, email: email
+      })
+    }).then(function() {
+      document.getElementById('nlForm').style.display = 'none';
+      document.getElementById('nlSuccess').style.display = 'block';
+    }).catch(function() {
+      alert('Une erreur est survenue. Contacte-nous à lilikarantez@gmail.com');
+    });
+  });
+
+  // RESTART
+  document.getElementById('restartBtn').addEventListener('click', function() {
+    answers = {};
+    document.getElementById('resultBlock').classList.remove('active');
+    document.querySelectorAll('.question-block').forEach(function(q) { q.classList.remove('active'); });
+    document.querySelectorAll('.option-btn').forEach(function(b) { b.classList.remove('selected'); });
+    document.querySelectorAll('.btn-next').forEach(function(b) { b.classList.remove('active'); });
+    document.getElementById('q1').classList.add('active');
+    document.getElementById('quizBlock').style.display = 'block';
+    updateProgress(0);
+  });
+</script>
+</body>
+</html>
